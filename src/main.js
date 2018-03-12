@@ -3,6 +3,8 @@
 import Vue from 'vue'
 import App from './App'
 import router from './router'
+import Vuescroller from 'vue-scroller'
+import { ToastPlugin } from 'vux'
 
 import vueJsonp from "vue-jsonp";
 
@@ -10,6 +12,8 @@ import vueJsonp from "vue-jsonp";
 
 Vue.config.productionTip = false
 Vue.use(vueJsonp);
+Vue.use(Vuescroller);
+Vue.use(ToastPlugin);
 /* eslint-disable no-new */
 new Vue({
   el: '#app',

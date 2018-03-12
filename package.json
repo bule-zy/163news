@@ -13,6 +13,7 @@
     "vue": "^2.5.2",
     "vue-jsonp": "^0.1.7",
     "vue-router": "^3.0.1",
+    "vue-scroller": "^2.2.4",
     "vux": "^2.7.9"
   },
   "devDependencies": {

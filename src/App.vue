@@ -6,7 +6,7 @@
 				<div>新闻</div>
 				<div slot="right">搜索</div>
 			</x-header>
-			<scroller :lock-y="true">
+			<ac :lock-y="true">
 				<div class="tab">
 					<tab>
 						<tab-item selected>推荐</tab-item>
@@ -17,12 +17,15 @@
 						<tab-item>互联网</tab-item>
 					</tab>
 				</div>
+			</ac>
+			<scroller class="my-scroller" :on-refresh="refresh"  :on-infinite="infinite" ref="Mref">
+				<swiper :list="swiperList" v-model="swiperIndex" :loop="true"></swiper>
+				<marquee class="m-marquee" :list="marqueeList">
+					<marquee-item v-for="item in marqueeList">{{item.title}}</marquee-item>
+				</marquee>
+				<panel :list="dataList"></panel>
+				<panel :list="moreDataList"></panel>
 			</scroller>
-			<swiper :list="swiperList" v-model="swiperIndex" :loop="true"></swiper>
-			<marquee class="m-marquee" :list="marqueeList">
-				<marquee-item v-for="list in marqueeList">{{list.title}}</marquee-item>
-			</marquee>
-			<panel :list="dataList"></panel>
 			<tabbar slot="bottom">
 				<tabbar-item>
 					<img src="./assets/icon_nav_button.png" slot="icon"/>
@@ -43,7 +46,20 @@
 </template>
 
 <script>
-	import { ViewBox, XHeader,Tabbar,TabbarItem, Tab, TabItem,Scroller,Swiper,Marquee, MarqueeItem,Panel } from 'vux';
+	var keyrefresh = ['A', 'B01', 'B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08', 'B09', 'B010'];
+	var key = 0;
+	var star = 0;
+	var end = star+9;
+	var keyValue = "A";
+	var initload = false;
+	function getkeyRefresh(){
+		key++;
+		if(key == keyrefresh){
+			key = 0;
+		}
+		keyValue = keyrefresh[key];
+	}
+	import { ViewBox, XHeader,Tabbar,TabbarItem, Tab, TabItem,Scroller as ac,Swiper,Marquee, MarqueeItem,Panel } from 'vux';
 	export default {
 		name: 'App',
 		components:{
@@ -53,7 +69,7 @@
 			TabbarItem,
 			Tab, 
 			TabItem,
-			Scroller,
+			ac,
 			Swiper,
 			Marquee, 
 			MarqueeItem,
@@ -64,7 +80,7 @@
 			this.$jsonp("https://3g.163.com/touch/jsonp/sy/recommend/0-9.html").then(
 				data => {
 					this.swiperList = data.focus.filter(item=>{
-						return item.addata === null;
+						return item.addata === null && item.picInfo[0];
 					}).map(item =>{
 						return{
 							url:item.link,
@@ -77,7 +93,7 @@
 			this.$jsonp("https://3g.163.com/touch/jsonp/sy/recommend/0-9.html").then(
 			data => {
 				this.dataList = data.list.filter(item=>{
-					return item.addata === null;
+					return item.addata === null && item.picInfo[0];
 				}).map(item =>{
 					return{
 						url:item.link,
@@ -86,12 +102,13 @@
 						desc:item.digest
 					}
 				})
+				initload = true;
 			});
 //			滚动新闻列表
 			this.$jsonp("https://3g.163.com/touch/jsonp/sy/recommend/0-9.html").then(
 			data => {
 				this.marqueeList = data.list.filter(item=>{
-					return item.addata === null;
+					return item.addata === null && item.picInfo[0];
 				}).map(item =>{
 					return{
 						title:item.title
@@ -100,21 +117,66 @@
 			});
 		},
 		data(){
-//			var dataList = [];
-//			for(var i=0;i<10;i++){
-//				dataList.push({
-//		          	src: 'http://somedomain.somdomain/x.jpg',
-//			        fallbackSrc: 'http://placeholder.qiniudn.com/60x60/3cc51f/ffffff',
-//			        title: '标题一',
-//			        desc: '由各种物质组成的巨型球状天体，叫做星球。星球有一定的形状，有自己的运行轨道。',
-//			        url: '/component/cell'
-//		      	})
-//			}
 			return{
 				swiperList:[],
 				swiperIndex:0,
 				dataList:[],
-				marqueeList:[]
+				marqueeList:[],
+				moreDataList:[]
+			}
+		},
+		methods:{
+			refresh(){
+				getkeyRefresh();
+				this.$jsonp("https://3g.163.com/touch/jsonp/sy/recommend/0-9.html",{
+					miss:"0",
+					refresh:keyValue
+				}).then(
+				data => {
+//					console.log(data)
+//					console.log(this.$refs.Mref);
+					this.dataList = data.list.filter(item=>{
+						return item.addata === null && item.picInfo[0];
+					}).map(item =>{
+						return{
+							url:item.link,
+							src:item.picInfo[0].url,
+							title:item.title,
+							desc:item.digest
+						}
+					});
+					this.$refs.Mref.finishPullToRefresh();
+					this.$vux.toast.text(`当前一共刷新${this.dataList.length}条数据`, 'top')
+				});
+			},
+			infinite(){
+				
+				if(!initload){
+					this.$refs.Mref.finishInfinite();
+					return;
+				}
+//				console.log(2);
+				this.$jsonp(`https://3g.163.com/touch/jsonp/sy/recommend/${star}-${end}.html`,{
+					miss:"0",
+					refresh:keyValue
+				}).then(data =>{
+					setTimeout(() =>{
+						var dataList= data.list.filter(item=>{
+							return item.addata === null && item.picInfo[0];
+						}).map(item =>{
+							return{
+								url:item.link,
+								src:item.picInfo[0].url,
+								title:item.title,
+								desc:item.digest
+							}
+						});
+						this.moreDataList = this.moreDataList.concat(dataList);
+						star +=10;
+						end = star + 9;
+						this.$refs.Mref.finishInfinite();
+					},1000);
+				});
 			}
 		}
 	}
@@ -138,12 +200,23 @@
 			height: 46px;
 			z-index: 9;
 		}
+		.my-scroller{
+			top: 90px;
+		}
 		.tab{
 			margin-top: 46px;
 			width: 600px;
 		}
 		.m-marquee{
 			margin: 10px;
+		}
+		.weui-media-box__hd,
+		.weui-media-box__hd img{
+			width: 102px;
+			height: 78px;
+		}
+		.weui-media-box__bd{
+			height: 78px;
 		}
 	}
 </style>
